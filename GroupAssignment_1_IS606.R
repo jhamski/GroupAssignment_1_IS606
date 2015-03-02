@@ -2,11 +2,12 @@
 # Members: Honey Berk, Sonya Hong, Rajagopal Srinivasan, James Hamski
 # See'Collaborative Assignment 1.pdf' for instructions
 
-#setwd("/Users/jim/Documents/Graduate\ School/IS\ 606/GroupAssignment_1_IS606")
-details <- read.csv("details.csv")
-sales <- read.csv("sales.csv")
+# loading these because they're super useful
+library("dplyr")
+library("tidyr")
 
-plot(sales$demand.ham)
+details <- read.csv("details.csv", header = TRUE)
+sales <- read.csv("sales.csv", header = TRUE)
 
 profit.margin <- details$price - details$cost
 
