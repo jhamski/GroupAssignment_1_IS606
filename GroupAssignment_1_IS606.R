@@ -24,9 +24,9 @@ distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
 # Ham has the greatest profit margin. Is there a relationship between Ham and the other variables?
 # Maximizing Ham could maximize revenue
 
+summary(sales)
 
-
-
+rpois(1,10)*25-200
 
   
 

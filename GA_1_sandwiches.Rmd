@@ -5,14 +5,20 @@ date: "March 4, 2015"
 output: html_document
 ---
 ***
-The goal of the project is to determine how many sandwiches of each type a sandwich shop prorietor (James) should bring each day in order to maximize his expected profits. There are two datasets:  
-1. The daily sales data contains number brought and number demanded for each sandwich.   
-2. The pricing data contains the cost and sale price of each type of sandwich.
+**Report For: James's Sandwich Stand**
 
-```{r}
+Per our group consulting services agreement, please find this quantitative analysis on sandwich stand operations and inventory control for James's Sandwich Stand below. The goal of this report is to determine how many sandwiches of each type James's Sandwich Stand should bring each day in order to maximize expected profits. 
+
+Our consulting group was provided with two datasets:  
+1. The daily sales data, containing the number brought and number demanded for each sandwich over 130 days   
+2. Pricing data, containing the cost and sale price of each type of sandwich
+
+```{r, echo=FALSE, warning=FALSE}
+library(ggplot2)
 details <- read.csv("details.csv", header = TRUE)
 sales <- read.csv("sales.csv", header = TRUE)
-
+```
+```{r}
 profit.margin <- details$price - details$cost
 
 ham.revenue <- sales$demand.ham * 6.5
@@ -27,9 +33,15 @@ distrham <- table(sales$demand.ham)/length(sales$demand.ham)
 distrturkey <- table(sales$demand.turkey)/length(sales$demand.turkey)
 distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
 ```
-
-The distribution of ham sales is:
-
+The distribution of ham, turkey, and veggie sales are:
 ```{r, echo=FALSE}
 plot(distrham)
+plot(distrturkey)
+plot(distrveggie)
 ```
+
+What is the expected profit?
+```{r}
+
+```
+
