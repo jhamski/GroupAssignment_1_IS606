@@ -1,9 +1,15 @@
-# Group Assignment for IS606
-# Members: Honey Berk, Sonya Hong, Rajagopal Srinivasan, James Hamski
-# See'Collaborative Assignment 1.pdf' for instructions
-# Your job is to use the data to determine how many sandwiches of each type he should bring each day in order to maximize his expected profits. 
+---
+title: "IS 606 - Project 1"
+author: "H. Berk, S. Hong, R. Srinivasan, J. Hamski"
+date: "March 4, 2015"
+output: html_document
+---
+***
+The goal of the project is to determine how many sandwiches of each type a sandwich shop prorietor (James) should bring each day in order to maximize his expected profits. There are two datasets:  
+1. The daily sales data contains number brought and number demanded for each sandwich.   
+2. The pricing data contains the cost and sale price of each type of sandwich.
 
-
+```{r}
 details <- read.csv("details.csv", header = TRUE)
 sales <- read.csv("sales.csv", header = TRUE)
 
@@ -20,18 +26,10 @@ veggie.cost <- sales$available.veggie * 2.5
 distrham <- table(sales$demand.ham)/length(sales$demand.ham)
 distrturkey <- table(sales$demand.turkey)/length(sales$demand.turkey)
 distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
+```
 
-# Ham has the greatest profit margin. Is there a relationship between Ham and the other variables?
-# Maximizing Ham could maximize revenue
+The distribution of ham sales is:
 
-
-
-
-
-  
-
-
-
-
-
-plot(ham.daily.cost)
+```{r, echo=FALSE}
+plot(distrham)
+```
