@@ -22,22 +22,12 @@ distrham <- table(sales$demand.ham)/length(sales$demand.ham)
 distrturkey <- table(sales$demand.turkey)/length(sales$demand.turkey)
 distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
 
-# figuring out average daily profit as a baseline, lambda, etc. 
-
-profit.ham <- ham.revenue - ham.cost
-profit.turkey <- turkey.revenue - veggie.cost
-profit.veggie <- veggie.revenue - veggie.cost
-ave.profit <-c(mean(profit.ham), mean(profit.turkey), mean(profit.veggie))
-ave.profit <- as.data.frame(ave.profit, row.names = c('ham', 'turkey', 'veggie'))
-
 ######### HAM ######### 
 #inventory balance
 ham.bal <- sales$demand.ham - sales$available.ham
 
-#######Need to check this - does this factor in sand. not sold? maybe don't use profit margin
-#revenue
-daily.revenue <- ifelse(ham.bal>=0,sales$demand.ham*3.0, sales$available.ham*3.0)
-revenue<-sum(daily.revenue)
+daily.profit <- ifelse(sales$demand.ham - sales$available.ham>=0,(sales$demand.ham*3.0)-(sales$demand.ham - sales$available.ham)*3.5, sales$available.ham*3.0)
+obs.profit<-sum(daily.profit)
 
 #what hits profit/loss harder - money left of the table because inventory is short or unsold inventory?
 foregone.sales <- ifelse(ham.bal>0, (sales$demand.ham-sales$available.ham)*6.5,0)
@@ -48,7 +38,7 @@ sum(unused.inventory)
 # conclusion -> foregone sales hurts profit more than unused inventory
 # let's use this conclusion to form a better inventory strategy
 
-#empirical simulation of the demand curve using the Poisson distribution
+#empirical simulation of the demand using the Poisson distribution
 lambda.ham <- mean(sales$demand.ham)
 demand.sim <- sapply(1:130, function(x) rpois(1,lambda.ham))
 
@@ -66,24 +56,57 @@ inventory.sim
 #simplyify with a function that calculates profit
 
 profit.func <- function(demand.sim,inventory.sim){
-  profit.sim.func <- ifelse(demand.sim-inventory.sim>=0,demand.sim*3.0, inventory.sim*3.0)
+  profit.sim.func <- ifelse(demand.sim-inventory.sim>=0,demand.sim*3.0-(demand.sim-inventory.sim)*3.5, inventory.sim*3.0)
   profit.sim.func<-sum(profit.sim.func)
   return(profit.sim.func)
 }
 
-############# THis works, likely need to fix profit calculation, see line 37
+#confirm this provides the correct profit for the observed data
+profit.func(sales$demand.ham, sales$available.ham) == obs.profit
 
-demand.sim <- sapply(1:130, function(x) rpois(1,15))
-inventory.sim <-sapply(1:130, function(x) rpois(1,15))
-test.1 <-profit.func(demand.sim, inventory.sim)
-test.1
+sales.model<-function(lambda.inventory){
+  demand.sim <- sapply(1:130, function(x) rpois(1,15))
+  inventory.sim <-sapply(1:130, function(x) rpois(1,lambda.inventory))
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
 
-# iterate through lambda values to optimize?
-lambda.iter <- 10:20
+lambda.inventory = 15
+model.simulated.profit <-sapply(1:10000, function(x) sales.model(lambda.inventory))
+summary(model.simulated.profit)
+difference <- obs.profit - mean(model.simulated.profit)
+#Note that the observed profit is $328 higher, this scenario doesn't work. Could we try differnet lambda values for the inventory?
+lambda.inventory = 16
+model.simulated.profit <-sapply(1:10000, function(x) sales.model(lambda.inventory))
+summary(model.simulated.profit)
+difference <-  mean(model.simulated.profit) - obs.profit
+difference
 
-for lambda.iter
-    inventory<-rpois(1,lambda.iter)
-    demand <- rpois(1,15)
+#Inventory Strategy 2 - make between 14 and 18 sandwiches 
+sales.model.2<-function(){
+  demand.sim <- sapply(1:130, function(x) rpois(1,15))
+  inventory.sim <-sapply(1:130, function(x) sample(14:18, 1, replace=TRUE))
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.2())
+summary(model.simulated.profit)
+difference <-  mean(model.simulated.profit) - obs.profit
+difference
+
+#Inventory Strategy 3 - make a contant number of sandwiches, say 15 
+sand.no <- 100
+sales.model.3<-function(){
+  demand.sim <- sapply(1:130, function(x) rpois(1,15))
+  inventory.sim <-replicate(130, sand.no)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.3())
+summary(model.simulated.profit)
+difference <-  mean(model.simulated.profit) - obs.profit
+difference
+
+#17 - 542.5
 
 
 ######### TURKEY ######### 
