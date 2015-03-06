@@ -34,9 +34,10 @@ ave.profit <- as.data.frame(ave.profit, row.names = c('ham', 'turkey', 'veggie')
 #inventory balance
 ham.bal <- sales$demand.ham - sales$available.ham
 
-#profit
-daily.profit <- ifelse(ham.bal>=0,sales$demand.ham*3.0, sales$available.ham*3.0)
-profit<-sum(daily.profit)
+#######Need to check this - does this factor in sand. not sold? maybe don't use profit margin
+#revenue
+daily.revenue <- ifelse(ham.bal>=0,sales$demand.ham*3.0, sales$available.ham*3.0)
+revenue<-sum(daily.revenue)
 
 #what hits profit/loss harder - money left of the table because inventory is short or unsold inventory?
 foregone.sales <- ifelse(ham.bal>0, (sales$demand.ham-sales$available.ham)*6.5,0)
@@ -52,29 +53,37 @@ lambda.ham <- mean(sales$demand.ham)
 demand.sim <- sapply(1:130, function(x) rpois(1,lambda.ham))
 
 # these looks fairly similar
-hist(demand.sim, col=rgb(0,0,1,1/4),main ="Emperical & Simulated Demand - Ham")
-hist(sales$demand.ham,col=rgb(1,0,0,1/4), add=TRUE)
+hist(demand.sim, col=rgb(0,0,1,1/4), main ="Emperical & Simulated Demand - Ham")
+hist(sales$demand.ham,col=rgb(1,0,0,1/4), ylim = 30, add=TRUE)
 
 #Old inentory strategy - make an arbitraty number of sandwiches per day, trying a few different levels
-#New inventory strategy - use a Poisson distribution 
-
+#New inventory strategy - use a Poisson distribution to decide daily sandwiches made
 #Example: James runs the following function every morning and makes that many ham sandwiches
 
-inventory.sim <- sapply(1:10000, function(x) rpois(1,9))
+inventory.sim <- sapply(1, function(x) rpois(1,9))
+inventory.sim
 
+#simplyify with a function that calculates profit
 
+profit.func <- function(demand.sim,inventory.sim){
+  profit.sim.func <- ifelse(demand.sim-inventory.sim>=0,demand.sim*3.0, inventory.sim*3.0)
+  profit.sim.func<-sum(profit.sim.func)
+  return(profit.sim.func)
+}
 
+############# THis works, likely need to fix profit calculation, see line 37
 
+demand.sim <- sapply(1:130, function(x) rpois(1,15))
+inventory.sim <-sapply(1:130, function(x) rpois(1,15))
+test.1 <-profit.func(demand.sim, inventory.sim)
+test.1
+
+# iterate through lambda values to optimize?
 lambda.iter <- 10:20
 
 for lambda.iter
     inventory<-rpois(1,lambda.iter)
     demand <- rpois(1,15)
-
-
-
-
-test <- sapply(1:100, function(x) rpois(1,15)*3)
 
 
 ######### TURKEY ######### 
