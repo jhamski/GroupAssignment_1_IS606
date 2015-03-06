@@ -26,8 +26,15 @@ distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
 #inventory balance
 ham.bal <- sales$demand.ham - sales$available.ham
 
-daily.profit <- ifelse(sales$demand.ham - sales$available.ham>=0,(sales$demand.ham*3.0)-(sales$demand.ham - sales$available.ham)*3.5, sales$available.ham*3.0)
-obs.profit<-sum(daily.profit)
+#profit function
+
+profit.func <- function(demand.sim,inventory.sim){
+  profit.sim.func <- ifelse(demand.sim-inventory.sim<=0,demand.sim*3.0-(inventory.sim-demand.sim)*3.5, inventory.sim*3.0)
+  profit.sim.func<-sum(profit.sim.func)
+  return(profit.sim.func)
+}
+
+profit.func(sales$demand.ham, sales$available.ham)
 
 #what hits profit/loss harder - money left of the table because inventory is short or unsold inventory?
 foregone.sales <- ifelse(ham.bal>0, (sales$demand.ham-sales$available.ham)*6.5,0)
@@ -47,25 +54,28 @@ hist(demand.sim, col=rgb(0,0,1,1/4), main ="Emperical & Simulated Demand - Ham")
 hist(sales$demand.ham,col=rgb(1,0,0,1/4), ylim = 30, add=TRUE)
 
 #Old inentory strategy - make an arbitraty number of sandwiches per day, trying a few different levels
-#New inventory strategy - use a Poisson distribution to decide daily sandwiches made
-#Example: James runs the following function every morning and makes that many ham sandwiches
 
-inventory.sim <- sapply(1, function(x) rpois(1,9))
-inventory.sim
+#write model using observed inventory as input
+lambda.demand<-mean(sales$demand.ham)
 
-#simplyify with a function that calculates profit
-
-profit.func <- function(demand.sim,inventory.sim){
-  profit.sim.func <- ifelse(demand.sim-inventory.sim>=0,demand.sim*3.0-(demand.sim-inventory.sim)*3.5, inventory.sim*3.0)
-  profit.sim.func<-sum(profit.sim.func)
-  return(profit.sim.func)
+sales.model.obs<-function(lambda.demand){
+  demand.sim <- sapply(1:130, function(x) rpois(1,lambda.demand))
+  inventory.sim <-sales$available.ham
+  model.profit <-profit.func(demand.sim, inventory.sim)
 }
 
-#confirm this provides the correct profit for the observed data
-profit.func(sales$demand.ham, sales$available.ham) == obs.profit
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.obs(lambda.demand))
+summary(model.simulated.profit)
+difference <- obs.profit - mean(model.simulated.profit)
+difference
 
+#New inventory strategy - use a Poisson distribution to decide daily sandwiches made
+#Example: James runs the following function every morning and makes that many ham sandwiches
+inventory.sim <- sapply(1, function(x) rpois(1,9))
+inventory.sim
+# Model using Poisson to determine number of sandwiches
 sales.model<-function(lambda.inventory){
-  demand.sim <- sapply(1:130, function(x) rpois(1,15))
+  demand.sim <- sapply(1:130, function(x) rpois(1,lambda.demand))
   inventory.sim <-sapply(1:130, function(x) rpois(1,lambda.inventory))
   model.profit <-profit.func(demand.sim, inventory.sim)
 }
@@ -74,6 +84,8 @@ lambda.inventory = 15
 model.simulated.profit <-sapply(1:10000, function(x) sales.model(lambda.inventory))
 summary(model.simulated.profit)
 difference <- obs.profit - mean(model.simulated.profit)
+difference
+
 #Note that the observed profit is $328 higher, this scenario doesn't work. Could we try differnet lambda values for the inventory?
 lambda.inventory = 16
 model.simulated.profit <-sapply(1:10000, function(x) sales.model(lambda.inventory))
@@ -81,9 +93,10 @@ summary(model.simulated.profit)
 difference <-  mean(model.simulated.profit) - obs.profit
 difference
 
+
 #Inventory Strategy 2 - make between 14 and 18 sandwiches 
 sales.model.2<-function(){
-  demand.sim <- sapply(1:130, function(x) rpois(1,15))
+  demand.sim <- sapply(1:130, function(x) rpois(1,lambda.demand))
   inventory.sim <-sapply(1:130, function(x) sample(14:18, 1, replace=TRUE))
   model.profit <-profit.func(demand.sim, inventory.sim)
 }
@@ -94,7 +107,7 @@ difference <-  mean(model.simulated.profit) - obs.profit
 difference
 
 #Inventory Strategy 3 - make a contant number of sandwiches, say 15 
-sand.no <- 100
+sand.no <- 15
 sales.model.3<-function(){
   demand.sim <- sapply(1:130, function(x) rpois(1,15))
   inventory.sim <-replicate(130, sand.no)
