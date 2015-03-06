@@ -13,8 +13,10 @@ Our consulting group was provided with two datasets:
 1. The daily sales data, containing the number brought and number demanded for each sandwich over 130 days   
 2. Pricing data, containing the cost and sale price of each type of sandwich
 
-```{r, echo=FALSE, warning=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
 library(ggplot2)
+library(dplyr)
+library(knitr)
 details <- read.csv("details.csv", header = TRUE)
 sales <- read.csv("sales.csv", header = TRUE)
 ```
@@ -40,8 +42,28 @@ plot(distrturkey)
 plot(distrveggie)
 ```
 
-What is the expected profit?
+The average daily proft for each sandwich is below. 
 ```{r}
+profit.ham <- ham.revenue - ham.cost
+profit.turkey <- turkey.revenue - veggie.cost
+profit.veggie <- veggie.revenue - veggie.cost
+average.profit <-c(mean(profit.ham), mean(profit.turkey), mean(profit.veggie))
+average.profit <- as.data.frame(average.profit, row.names = c('ham', 'turkey', 'veggie'))
+kable(average.profit)
+```
+
+We can model profit using a Poisson distribution. 
+For each sandwich type, we assign:
+x = number of sandwiches sold 
+Y = profit
+p.Margin = profit margin for each sandwich
+λ = average no. of sandwiches sold per day
+
+For Ham:
+```{r}
+lambda <- mean(sales$demand.ham)
+p.Margin <- 3
+
 
 ```
 

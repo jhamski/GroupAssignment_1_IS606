@@ -3,6 +3,7 @@
 # See'Collaborative Assignment 1.pdf' for instructions
 # Your job is to use the data to determine how many sandwiches of each type he should bring each day in order to maximize his expected profits. 
 
+library(ggplot2)
 
 details <- read.csv("details.csv", header = TRUE)
 sales <- read.csv("sales.csv", header = TRUE)
@@ -21,17 +22,67 @@ distrham <- table(sales$demand.ham)/length(sales$demand.ham)
 distrturkey <- table(sales$demand.turkey)/length(sales$demand.turkey)
 distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
 
-# Ham has the greatest profit margin. Is there a relationship between Ham and the other variables?
-# Maximizing Ham could maximize revenue
+# figuring out average daily profit as a baseline, lambda, etc. 
 
-summary(sales)
+profit.ham <- ham.revenue - ham.cost
+profit.turkey <- turkey.revenue - veggie.cost
+profit.veggie <- veggie.revenue - veggie.cost
+ave.profit <-c(mean(profit.ham), mean(profit.turkey), mean(profit.veggie))
+ave.profit <- as.data.frame(ave.profit, row.names = c('ham', 'turkey', 'veggie'))
 
-rpois(1,10)*25-200
+######### HAM ######### 
+#inventory balance
+ham.bal <- sales$demand.ham - sales$available.ham
 
-  
+#profit
+daily.profit <- ifelse(ham.bal>=0,sales$demand.ham*3.0, sales$available.ham*3.0)
+profit<-sum(daily.profit)
+
+#what hits profit/loss harder - money left of the table because inventory is short or unsold inventory?
+foregone.sales <- ifelse(ham.bal>0, (sales$demand.ham-sales$available.ham)*6.5,0)
+unused.inventory <- ifelse(ham.bal<0, (sales$available.ham - sales$demand.ham)*3.5, 0)
+sum(foregone.sales)
+sum(unused.inventory)
+
+# conclusion -> foregone sales hurts profit more than unused inventory
+# let's use this conclusion to form a better inventory strategy
+
+#empirical simulation of the demand curve using the Poisson distribution
+lambda.ham <- mean(sales$demand.ham)
+demand.sim <- sapply(1:130, function(x) rpois(1,lambda.ham))
+
+# these looks fairly similar
+hist(demand.sim, col=rgb(0,0,1,1/4),main ="Emperical & Simulated Demand - Ham")
+hist(sales$demand.ham,col=rgb(1,0,0,1/4), add=TRUE)
+
+#Old inentory strategy - make an arbitraty number of sandwiches per day, trying a few different levels
+#New inventory strategy - use a Poisson distribution 
+
+#Example: James runs the following function every morning and makes that many ham sandwiches
+
+inventory.sim <- sapply(1:10000, function(x) rpois(1,9))
 
 
 
 
+lambda.iter <- 10:20
 
-plot(ham.daily.cost)
+for lambda.iter
+    inventory<-rpois(1,lambda.iter)
+    demand <- rpois(1,15)
+
+
+
+
+test <- sapply(1:100, function(x) rpois(1,15)*3)
+
+
+######### TURKEY ######### 
+
+
+
+lambda.turkey <- mean(sales$demand.turkey)
+lambda.veggie <- mean(sales$demand.veggie)
+
+
+
