@@ -2,7 +2,7 @@
 title: "IS 606 - Project 1"
 author: "H. Berk, S. Hong, R. Srinivasan, J. Hamski"
 date: "March 4, 2015"
-output: html_document
+output: word_document
 ---
 ***
 **Report For: James's Sandwich Stand**
@@ -14,56 +14,249 @@ Our consulting group was provided with two datasets:
 2. Pricing data, containing the cost and sale price of each type of sandwich
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
-library(ggplot2)
-library(dplyr)
-library(knitr)
 details <- read.csv("details.csv", header = TRUE)
 sales <- read.csv("sales.csv", header = TRUE)
+library(knitr)
 ```
 ```{r}
-profit.margin <- details$price - details$cost
-
-ham.revenue <- sales$demand.ham * 6.5
-turkey.revenue <- sales$demand.turkey * 6.5
-veggie.revenue <- sales$demand.veggie * 5.0
-
-ham.cost <- sales$available.ham * 3.5
-turkey.cost <- sales$available.turkey * 4.0
-veggie.cost <- sales$available.veggie * 2.5
-
-distrham <- table(sales$demand.ham)/length(sales$demand.ham)
-distrturkey <- table(sales$demand.turkey)/length(sales$demand.turkey)
-distrveggie <- table(sales$demand.veggie)/length(sales$demand.veggie)
+profit.margin <- data.frame(details$price - details$cost, row.names = c("ham", "turkey", "veggie"))
+kable(profit.margin)
 ```
-The distribution of ham, turkey, and veggie sales are:
+
+Calculating Profit using an R function
+```{r}
+profit.func <- function(demand.sim,inventory.sim){
+  profit.sim.func <- ifelse(demand.sim-inventory.sim<=0,demand.sim*3.0-(inventory.sim-demand.sim)*3.5, inventory.sim*3.0)
+  profit.sim.func<-sum(profit.sim.func)
+  return(profit.sim.func)}
+```
+We can test to make sure the observed profits match previous calculations in Excel 
+```{r}
+(obs.profit<-profit.func(sales$demand.ham, sales$available.ham))
+```
+For ham, what hits profits harder - foregone sales or unused inventory?
+```{r}
+ham.bal <- sales$demand.ham - sales$available.ham
+foregone.sales <- ifelse(ham.bal>0, (sales$demand.ham-sales$available.ham)*6.5,0)
+unused.inventory <- ifelse(ham.bal<0, (sales$available.ham - sales$demand.ham)*3.5, 0)
+(sum(foregone.sales))
+(sum(unused.inventory))
+```
+Conclusion -> foregone sales hurts profit more than unused inventory. Perhaps we can use this to form a better inventory strategy.
+
+First, in order to test a inventory we create a simulation of sandwich demand. Then, we simulate different inventory strategies ("number of sandwiches per day per type") and calculate their effects on profit. We assume that demand for each sandwich type is independent. Therefore, a strategy that increases profit for ham sandwiches will have no effect on turkey or veggie sandwich profits. This reasonable assumption of independence greatly simplifies the model. 
+
+We can model sandwich demand using a Poisson distribution. 
+
+###For Ham:
+Calculate lambda using the mean of ham demand (no. of sandwiches per day).
+```{r}
+lambda.ham <- mean(sales$demand.ham)
+```
+then, using a Poisson function, we simulate the demand of sandwiches for each day of a 130 day period
+```{r}
+demand.sim <- sapply(1:130, function(x) rpois(1,lambda.ham))
+```
+Comparing the histograms of the ham demand simulation and the empirical sales demand, we note that the look similar. 
+```{r}
+hist(demand.sim, col=rgb(0,0,1,1/4), main ="Emperical & Simulated Demand - Ham")
+hist(sales$demand.ham,col=rgb(1,0,0,1/4), ylim = 30, add=TRUE)
+```
+
+How good is the Poisson distribution at modeling demand when the lambda parameter is based on average sandwich demand? Apparently not that good. If we compare the modeled demand to the actual ham sandwiches available, we would expect the difference in the observed revenue and modeled revenue to be fairly small. However, it is generally around $65 higher in the simulation. 
+```{r}
+sales.model.obs<-function(){
+  demand.sim <- rpois(1:130,16)
+  inventory.sim <-sales$available.ham
+  model.profit <-profit.func(demand.sim, inventory.sim)}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.obs())
+difference <- obs.profit - mean(model.simulated.profit)
+difference
+```
+After testing other lambda parameters, it was discovered that lambda = 16.17 allowed a much closer match between the revenue resulting from simulated demand and the actual demand. Generally, the simulated revenue is less than $2 off the actual revenue. 
+
+**Determining why this is will involve further research.**
+```{r}
+sales.model.obs<-function(){
+  demand.sim <- rpois(1:130,16.17)
+  inventory.sim <-sales$available.ham
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.obs())
+#summary(model.simulated.profit)
+difference <- obs.profit - mean(model.simulated.profit)
+difference
+```
+
+Now we use the simulation of ham demand described by a Poisson distribution to test different inventory scenarios. First, we'll try using a constant number of ham sandwiches. Three simulations are run: (1) making the average number of sandwiches - 15, (2) making one more than average - 16, and (3) making one less than average - 14.
+
+```{r}
+sales.model.3<-function(sand.no){
+  demand.sim <- rpois(1:130, 16.17)
+  inventory.sim <-replicate(130, sand.no)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+sand.no <- 14
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.3(sand.no))
+summary(model.simulated.profit)
+difference.14 <-  mean(model.simulated.profit) - obs.profit
+
+sand.no <- 15
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.3(sand.no))
+summary(model.simulated.profit)
+difference.15 <-  mean(model.simulated.profit) - obs.profit
+
+sand.no <- 16
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.3(sand.no))
+summary(model.simulated.profit)
+difference.16 <-  mean(model.simulated.profit) - obs.profit
+
+sand.no <- 17
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.3(sand.no))
+summary(model.simulated.profit)
+difference.17 <-  mean(model.simulated.profit) - obs.profit
+
+constant.count <-cbind(difference.14,difference.15,difference.16,difference.17)
+kable(constant.count)
+```
+
+This shows that ham sandwich revenue can be increased by about $126 if James just makes 16 ham sandwiches a day. Another possible strategy is to randomly choose a number of sandwiches to make per day within a reasonable range. Picking between 14, 15, 16, or 17 ham sandwiches, we simulate the effects on revenue:
+```{r}
+sales.model.2<-function(){
+  demand.sim <- rpois(1:130,16.17)
+  inventory.sim <-sample(14:17, 130, replace=TRUE)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.2())
+summary(model.simulated.profit)
+difference <-  mean(model.simulated.profit) - obs.profit
+difference
+```
+This increases revenue by about $82, respectable but not as high as producing a steady 16 ham sandwiches. 
+
+###For Turkey
+First, we again test the Poisson demand simulation and this time adjust the lambda paramter downnward to get within $2 of the expected revenue from the empirical data. 
 ```{r, echo=FALSE}
-plot(distrham)
-plot(distrturkey)
-plot(distrveggie)
+obs.profit.turkey<-profit.func(sales$demand.turkey, sales$available.turkey)
+sales.model.obs<-function(){
+  demand.sim <- rpois(1:130,21.6)
+  inventory.sim <-sales$available.turkey
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.obs())
+#summary(model.simulated.profit)
+difference <- obs.profit.turkey - mean(model.simulated.profit)
+difference
+```
+Using the same scenarios as with Ham, we find that a constant production of 22 turkey sandwiches will increase profit by $2,000! 
+```{r, echo=FALSE}
+sales.model.5<-function(sand.no){
+  demand.sim <- rpois(1:130, 21.6)
+  inventory.sim <-replicate(130, sand.no)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+sand.no <- 20
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.5(sand.no))
+#summary(model.simulated.profit)
+difference.20 <-  mean(model.simulated.profit) - obs.profit.turkey
+
+sand.no <- 21
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.5(sand.no))
+#summary(model.simulated.profit)
+difference.21 <-  mean(model.simulated.profit) - obs.profit.turkey
+
+sand.no <- 22
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.5(sand.no))
+#summary(model.simulated.profit)
+difference.22 <-  mean(model.simulated.profit) - obs.profit.turkey
+
+sand.no <- 23
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.5(sand.no))
+#summary(model.simulated.profit)
+difference.23 <-  mean(model.simulated.profit) - obs.profit.turkey
+
+constant.count <-cbind(difference.20,difference.21,difference.22,difference.23)
+kable(constant.count)
+```
+Chosing a random number of turkey sandwiches between 21 and 24 results in a respectable revenue gain of $523. 
+
+```{r, echo=FALSE}
+sales.model.6<-function(){
+  demand.sim <- rpois(1:130,21.6)
+  inventory.sim <-sample(21:24, 130, replace=TRUE)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.6())
+#summary(model.simulated.profit)
+difference <-  mean(model.simulated.profit) - obs.profit.turkey
+difference
 ```
 
-The average daily proft for each sandwich is below. 
-```{r}
-profit.ham <- ham.revenue - ham.cost
-profit.turkey <- turkey.revenue - veggie.cost
-profit.veggie <- veggie.revenue - veggie.cost
-average.profit <-c(mean(profit.ham), mean(profit.turkey), mean(profit.veggie))
-average.profit <- as.data.frame(average.profit, row.names = c('ham', 'turkey', 'veggie'))
-kable(average.profit)
+###For Veggie
+
+As before we test the Poisson demand simulation and this time adjust the lambda paramter upward, but only by 0.18, to get within $2 of the expected revenue from the empirical data. 
+```{r, echo=FALSE}
+
+obs.profit.veggie<-profit.func(sales$demand.veggie, sales$available.veggie)
+sales.model.obs<-function(){
+  demand.sim <- rpois(1:130,13.2)
+  inventory.sim <-sales$available.veggie
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.obs())
+#summary(model.simulated.profit)
+difference <- obs.profit.veggie - mean(model.simulated.profit)
+difference
 ```
 
-We can model profit using a Poisson distribution. 
-For each sandwich type, we assign:
-x = number of sandwiches sold 
-Y = profit
-p.Margin = profit margin for each sandwich
-λ = average no. of sandwiches sold per day
+Using the same scenarios as with Ham and Turkey, we find that a constant production of 22 veggie sandwiches will increase profit by $Y! 
+```{r, echo=FALSE}
+sales.model.6<-function(sand.no){
+  demand.sim <- rpois(1:130, 13.2)
+  inventory.sim <-replicate(130, sand.no)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+sand.no <- 12
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.5(sand.no))
+#summary(model.simulated.profit)
+difference.12 <-  mean(model.simulated.profit) - obs.profit.veggie
 
-For Ham:
-```{r}
-lambda <- mean(sales$demand.ham)
-p.Margin <- 3
+sand.no <- 13
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.6(sand.no))
+#summary(model.simulated.profit)
+difference.13 <-  mean(model.simulated.profit) - obs.profit.veggie
 
+sand.no <- 14
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.6(sand.no))
+#summary(model.simulated.profit)
+difference.14 <-  mean(model.simulated.profit) - obs.profit.veggie
 
+sand.no <- 15
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.6(sand.no))
+#summary(model.simulated.profit)
+difference.15 <-  mean(model.simulated.profit) - obs.profit.veggie
+
+constant.count <-cbind(difference.12, difference.13,difference.14,difference.15)
+kable(constant.count)
 ```
 
+Chosing a random number of turkey sandwiches between 12 and 16 results in a respectable revenue gain of $332. 
+
+```{r, echo=FALSE}
+sales.model.6<-function(){
+  demand.sim <- rpois(1:130,13.2)
+  inventory.sim <-sample(12:16, 130, replace=TRUE)
+  model.profit <-profit.func(demand.sim, inventory.sim)
+}
+
+model.simulated.profit <-sapply(1:10000, function(x) sales.model.6())
+#summary(model.simulated.profit)
+difference <-  mean(model.simulated.profit) - obs.profit.veggie
+difference
+```
